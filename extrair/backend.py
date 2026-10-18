@@ -1,4 +1,4 @@
-"""Leitura de planilhas e exportação de texto, sem dependências da interface."""
+"""Leitura de planilhas e exportação de texto"""
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 import os
