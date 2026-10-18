@@ -12,7 +12,6 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName('Extrair')
     app.setApplicationVersion(VERSION)
-    app.setStyle('Fusion')
     app.setStyleSheet(STYLE)
     window = Window()
     window.show()

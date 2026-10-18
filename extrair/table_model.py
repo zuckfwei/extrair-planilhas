@@ -1,8 +1,6 @@
 """Modelo da prévia de células."""
-import os
-
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QFontDatabase
 
 
 class TableModel(QAbstractTableModel):
@@ -21,8 +19,8 @@ class TableModel(QAbstractTableModel):
             return None
         if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole):
             return self.rows[index.row()][index.column()]
-        if role == Qt.ItemDataRole.FontRole:
-            return QFont('Consolas' if os.name == 'nt' else 'DejaVu Sans Mono', 10)
+        if role == Qt.ItemDataRole.FontRole and index.column() == 0:
+            return QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
         if role == Qt.ItemDataRole.ForegroundRole and index.column() == 0:
             return QColor('#32724e')
 
