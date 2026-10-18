@@ -1,0 +1,48 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-build.txt
+
+      - name: Verificar versão
+        shell: pwsh
+        run: |
+          $version = python -c "from extrair import VERSION; print(VERSION)"
+          $expectedTag = "v$version"
+          if ($env:GITHUB_REF_NAME -ne $expectedTag) {
+            throw "A tag $env:GITHUB_REF_NAME não corresponde à versão $version"
+          }
+
+      - name: Instalar dependências
+        run: python -m pip install -r requirements-build.txt
+
+      - name: Gerar executável
+        run: python scripts/build.py
+
+      - name: Publicar release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME dist/Extrair.exe `
+            --title "Extrair $env:GITHUB_REF_NAME" `
+            --notes "Aplicativo para Windows. Baixe Extrair.exe e execute; não é necessário instalar Python."
