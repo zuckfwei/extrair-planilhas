@@ -5,6 +5,7 @@ Aplicativo desktop que extrai células e fórmulas de arquivos XLSX, XLSM, XLS e
 ## Executar no Linux
 
 ```bash
+sudo apt install python3-venv libxcb-cursor0 libxkbcommon-x11-0
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
