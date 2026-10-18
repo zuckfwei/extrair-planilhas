@@ -1,21 +1,22 @@
-"""Execução de tarefas fora da interface."""
+"""Execução de tarefas sem bloquear a interface."""
 from PySide6.QtCore import QThread, Signal
 
-from .extractor import Cancelled
+from ..backend import Cancelled
 
 
-class Job(QThread):
-    done = Signal(object)
+class BackgroundJob(QThread):
+    succeeded = Signal(object)
     failed = Signal(str)
     progress = Signal(int)
 
-    def __init__(self, task, cancel):
+    def __init__(self, task):
         super().__init__()
-        self.task, self.cancel = task, cancel
+        self.task = task
 
     def run(self):
         try:
-            self.done.emit(self.task())
+            result = self.task(self.progress.emit)
+            self.succeeded.emit(result)
         except Cancelled:
             self.failed.emit('Operação cancelada.')
         except Exception as error:

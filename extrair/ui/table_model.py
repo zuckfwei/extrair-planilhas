@@ -4,7 +4,10 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PySide6.QtGui import QColor
 
 
-class TableModel(QAbstractTableModel):
+MAX_CONTIGUOUS_COLUMNS = 100
+
+
+class SpreadsheetPreviewModel(QAbstractTableModel):
     def __init__(self):
         super().__init__()
         self.cells = {}
@@ -25,10 +28,17 @@ class TableModel(QAbstractTableModel):
             used_columns.add(column)
             used_rows.add(row)
 
-        if used_columns and max(used_columns) - min(used_columns) <= 100:
-            self.columns = list(range(min(used_columns), max(used_columns) + 1))
+        if not used_columns:
+            self.columns = []
         else:
-            self.columns = sorted(used_columns)
+            first_column = min(used_columns)
+            last_column = max(used_columns)
+            column_span = last_column - first_column
+            if column_span <= MAX_CONTIGUOUS_COLUMNS:
+                self.columns = list(range(first_column, last_column + 1))
+            else:
+                self.columns = sorted(used_columns)
+
         self.rows = sorted(used_rows)
         self.visible_rows = self.rows.copy()
         self.endResetModel()
@@ -39,21 +49,33 @@ class TableModel(QAbstractTableModel):
         if not query:
             self.visible_rows = self.rows.copy()
         else:
-            self.visible_rows = [
-                row for row in self.rows
-                if any(
-                    query in f'{get_column_letter(column)}{row}'.casefold()
-                    or query in str(self.cells.get((row, column), '')).casefold()
-                    for column in self.columns
-                )
-            ]
+            matching_rows = []
+            for row in self.rows:
+                if self._row_matches(row, query):
+                    matching_rows.append(row)
+            self.visible_rows = matching_rows
         self.endResetModel()
 
+    def _row_matches(self, row, query):
+        for column in self.columns:
+            coordinate = f'{get_column_letter(column)}{row}'
+            if query in coordinate.casefold():
+                return True
+
+            value = self.cells.get((row, column), '')
+            if query in str(value).casefold():
+                return True
+        return False
+
     def rowCount(self, parent=QModelIndex()):
-        return 0 if parent.isValid() else len(self.visible_rows)
+        if parent.isValid():
+            return 0
+        return len(self.visible_rows)
 
     def columnCount(self, parent=QModelIndex()):
-        return 0 if parent.isValid() else len(self.columns)
+        if parent.isValid():
+            return 0
+        return len(self.columns)
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
@@ -61,7 +83,9 @@ class TableModel(QAbstractTableModel):
         row = self.visible_rows[index.row()]
         column = self.columns[index.column()]
         value = self.cells.get((row, column), '')
-        if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole):
+        if role == Qt.ItemDataRole.DisplayRole:
+            return value
+        if role == Qt.ItemDataRole.ToolTipRole:
             return value
         if role == Qt.ItemDataRole.ForegroundRole and value:
             return QColor('#263b34')

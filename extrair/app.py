@@ -4,11 +4,11 @@ import sys
 from PySide6.QtWidgets import QApplication, QProxyStyle, QStyle
 
 from . import VERSION
-from .style import STYLE
-from .window import Window
+from .ui.style import STYLE
+from .ui.window import MainWindow
 
 
-class DropDownStyle(QProxyStyle):
+class ComboBoxDropDownStyle(QProxyStyle):
     """Usa listas comuns nos seletores, sempre iniciadas pelo primeiro item."""
 
     def styleHint(self, hint, option=None, widget=None, return_data=None):
@@ -21,9 +21,9 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName('Extrair')
     app.setApplicationVersion(VERSION)
-    app.setStyle(DropDownStyle(app.style()))
+    app.setStyle(ComboBoxDropDownStyle(app.style()))
     app.setStyleSheet(STYLE)
-    window = Window()
+    window = MainWindow()
     window.show()
     if len(sys.argv) > 1:
         window.open_file(sys.argv[1])
