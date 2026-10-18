@@ -16,9 +16,11 @@ QPushButton#primary:hover { background: #184c36; }
 QPushButton:disabled { background: #edf0eb; color: #9aa59d; border-color: #e0e5dc; }
 QComboBox, QLineEdit { background: white; border: 1px solid #d2dad3; border-radius: 6px; padding: 7px 9px; selection-background-color: #226348; }
 QComboBox:focus, QLineEdit:focus { border: 1px solid #226348; }
+QComboBox:hover { color: #263b34; background: white; border-color: #d2dad3; }
 QComboBox::drop-down { border: none; width: 25px; }
-QComboBox QAbstractItemView { background: white; selection-background-color: #e3efdb; selection-color: #233d36; }
-QTableView { border: none; background: white; alternate-background-color: #fafbf8; gridline-color: #eff2ec; selection-background-color: #e5efdf; selection-color: #173b2a; }
+QComboBox QAbstractItemView { color: #263b34; background: white; selection-background-color: white; selection-color: #263b34; outline: none; }
+QComboBox QAbstractItemView::item:hover { color: #263b34; background: #f4f6f3; }
+QTableView { border: none; background: white; alternate-background-color: #fafbf8; gridline-color: #dfe5df; selection-background-color: #e5efdf; selection-color: #173b2a; }
 QHeaderView::section { background: #f4f6f0; color: #5f7168; padding: 8px; border: none; border-bottom: 1px solid #dfe5d9; font-size: 11px; font-weight: 600; }
 QProgressBar { border: none; background: #e5ebdf; border-radius: 3px; max-height: 5px; }
 QProgressBar::chunk { background: #4e865c; border-radius: 3px; }

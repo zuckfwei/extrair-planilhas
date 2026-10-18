@@ -2,7 +2,7 @@
 from pathlib import Path
 from threading import Event
 
-from PySide6.QtCore import Qt, QSortFilterProxyModel
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QFileDialog, QFrame, QHBoxLayout, QHeaderView,
@@ -14,6 +14,12 @@ from . import VERSION
 from .extractor import Cancelled, Spreadsheet, extract, export_text
 from .table_model import TableModel
 from .worker import Job
+
+
+class TopComboBox(QComboBox):
+    def showPopup(self):
+        super().showPopup()
+        self.view().scrollToTop()
 
 
 class Window(QMainWindow):
@@ -53,7 +59,7 @@ class Window(QMainWindow):
         a = QVBoxLayout()
         a.setSpacing(4)
         a.addWidget(self.label('Aba', 'fieldLabel'))
-        self.sheets = QComboBox()
+        self.sheets = TopComboBox()
         self.sheets.setPlaceholderText('Selecione um arquivo')
         self.sheets.setEnabled(False)
         self.sheets.currentIndexChanged.connect(self.invalidate)
@@ -62,7 +68,7 @@ class Window(QMainWindow):
         b = QVBoxLayout()
         b.setSpacing(4)
         b.addWidget(self.label('Conteúdo', 'fieldLabel'))
-        self.mode = QComboBox()
+        self.mode = TopComboBox()
         self.mode.addItems(['Preservar fórmulas', 'Valores salvos na planilha'])
         self.mode.setToolTip('XLS: somente valores. Valores salvos não recalculam fórmulas; sem cache, a célula pode ficar vazia.')
         self.mode.currentIndexChanged.connect(self.invalidate)
@@ -92,7 +98,7 @@ class Window(QMainWindow):
         toolbar.addWidget(self.save)
         pv.addLayout(toolbar)
         self.search = QLineEdit()
-        self.search.setPlaceholderText('Filtrar a prévia por célula, texto ou fórmula…')
+        self.search.setPlaceholderText('Pesquisar conteúdo')
         self.search.setClearButtonEnabled(True)
         pv.addWidget(self.search)
         self.stack = QStackedWidget()
@@ -106,24 +112,23 @@ class Window(QMainWindow):
         self.stack.addWidget(empty)
         self.table = QTableView()
         self.table.setAlternatingRowColors(True)
-        self.table.setShowGrid(False)
-        self.table.setWordWrap(False)
-        self.table.verticalHeader().hide()
-        self.table.verticalHeader().setDefaultSectionSize(32)
-        self.table.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        self.table.setShowGrid(True)
+        self.table.setWordWrap(True)
+        self.table.setSelectionBehavior(QTableView.SelectionBehavior.SelectItems)
         self.model = TableModel()
-        self.proxy = QSortFilterProxyModel(self)
-        self.proxy.setSourceModel(self.model)
-        self.proxy.setFilterKeyColumn(-1)
-        self.proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.table.setModel(self.proxy)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(0, 100)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.table.setModel(self.model)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.table.horizontalHeader().setDefaultSectionSize(150)
+        self.table.horizontalHeader().setMinimumSectionSize(70)
+        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.verticalHeader().setMinimumSectionSize(24)
+        self.table.setCornerButtonEnabled(False)
+        self.table.doubleClicked.connect(self.toggle_cell)
         self.stack.addWidget(self.table)
         pv.addWidget(self.stack, 1)
         body.addWidget(preview, 1)
-        self.search.textChanged.connect(self.proxy.setFilterFixedString)
+        self.search.textChanged.connect(self.filter_preview)
         bottom = QHBoxLayout()
         self.status = self.label('Pronto para abrir uma planilha.', 'muted')
         self.status.setWordWrap(True)
@@ -147,6 +152,20 @@ class Window(QMainWindow):
         label.setObjectName(name)
         return label
 
+    def filter_preview(self, text):
+        self.model.set_filter(text)
+        self.table.verticalHeader().resizeSections(QHeaderView.ResizeMode.Fixed)
+
+    def toggle_cell(self, index):
+        if not index.isValid() or not self.model.data(index):
+            return
+        row = index.row()
+        default_height = self.table.verticalHeader().defaultSectionSize()
+        if self.table.rowHeight(row) > default_height:
+            self.table.setRowHeight(row, default_height)
+            return
+        self.table.setRowHeight(row, max(default_height, min(self.table.sizeHintForRow(row), 240)))
+
     def invalidate(self, *_):
         if self.result:
             self.result.cleanup()
@@ -156,9 +175,7 @@ class Window(QMainWindow):
         self.search.clear()
         self.search.setEnabled(False)
         self.stack.setCurrentIndex(0)
-        self.model.beginResetModel()
-        self.model.rows = []
-        self.model.endResetModel()
+        self.model.set_cells([])
         self.summary.clear()
         if self.book:
             self.status.setText('Pronto para extrair.')
@@ -244,9 +261,7 @@ class Window(QMainWindow):
 
     def extracted(self, result):
         self.result = result
-        self.model.beginResetModel()
-        self.model.rows = result.preview
-        self.model.endResetModel()
+        self.model.set_cells(result.preview)
         self.stack.setCurrentIndex(1)
         self.search.setEnabled(True)
         self.summary.setText(
